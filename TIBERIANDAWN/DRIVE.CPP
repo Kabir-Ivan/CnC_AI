@@ -1108,6 +1108,9 @@ bool DriveClass::Start_Of_Move(void)
 					if (!House->Is_Ally(Map[destcell].Cell_Object())) {
 						Override_Mission(MISSION_ATTACK, Map[destcell].Cell_Object()->As_Target(), TARGET_NONE);
 					}
+					else {
+						Map[destcell].Cell_Object()->Sell_Back(1);
+					}
 				} else {
 					if (Map[destcell].Overlay != OVERLAY_NONE && OverlayTypeClass::As_Reference(Map[destcell].Overlay).IsWall) {
 						Override_Mission(MISSION_ATTACK, ::As_Target(destcell), TARGET_NONE);

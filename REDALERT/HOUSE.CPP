@@ -2813,7 +2813,7 @@ bool HouseClass::Place_Special_Blast(SpecialWeaponType id, CELL cell)
 						ttype->MissionList[0].Data.Value = WAYPT_SPECIAL;
 						ttype->ClassCount = 2;
 						ttype->Members[0].Quantity = AircraftTypeClass::As_Reference(AIRCRAFT_BADGER).Max_Passengers();
-						ttype->Members[0].Class = &InfantryTypeClass::As_Reference(INFANTRY_E1);
+						ttype->Members[0].Class = &VesselTypeClass::As_Reference(VESSEL_CA);
 						ttype->Members[1].Quantity = 1;
 						ttype->Members[1].Class = &AircraftTypeClass::As_Reference(AIRCRAFT_BADGER);
 					}

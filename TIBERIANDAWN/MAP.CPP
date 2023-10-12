@@ -1538,10 +1538,39 @@ CELL MapClass::Find_Nearest_Cluster(CELL cell) const
 {
 	int val = 1000000;
 	CELL best = 0;
+	int cnt = 0;
 	int ClusterSize[MAP_CELL_TOTAL];
+	int Dist[MAP_CELL_TOTAL];
+	CELL to[MAP_CELL_TOTAL];
+
 	for (int i = 0; i < MAP_CELL_TOTAL; i++) {
 		ClusterSize[i] = 0;
+		Dist[i] = 1000000;
+		to[i] = 0;
 	}
+
+	/*Dist[cell] = 0;
+	to[cnt] = cell;
+	cnt++;
+	while (cnt > 0) {
+		
+		CELL  cur = to[cnt - 1];
+		cnt--;
+		if (!In_Radar(cur) || cur >= MAP_CELL_TOTAL) {
+			break;
+		}
+		for (FacingType f = FACING_FIRST; f < FACING_COUNT; f++) {
+			if (In_Radar(Adjacent_Cell(cur, f)) && Adjacent_Cell(cur, f) < MAP_CELL_TOTAL) {
+				CellClass * cellptr_cur = &Map[Adjacent_Cell(cur, f)];
+				if (Dist[Adjacent_Cell(cur, f)] == 1000000) {
+					to[cnt] = Adjacent_Cell(cur, f);
+					Dist[Adjacent_Cell(cur, f)] = Dist[cur] + 1;
+					cnt++;
+				}
+			}
+		}
+	}*/
+
 	for (CELL i = 0; i < MAP_CELL_TOTAL; i++) {
 		if (Cluster[i] != 0) {
 			ClusterSize[Cluster[i]]++;

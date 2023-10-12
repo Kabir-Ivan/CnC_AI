@@ -1163,7 +1163,10 @@ void BuildingClass::AI(void)
 		if (Scenario > 10) ratio = 0x00C0;
 		if (GameToPlay != GAME_NORMAL) ratio = 0x00FC;
 		if (Class->IsRepairable && Health_Ratio() <= (unsigned) ratio) {
-			if (House->Available_Money() >= REPAIR_THRESHHOLD) {
+			if (Health_Ratio() < 0x0010 && *this != STRUCT_CONST) {
+				Sell_Back(1);
+			}
+			else if (House->Available_Money() >= REPAIR_THRESHHOLD) {
 				Repair(1);
 			} else {
 				if (IsTickedOff && (int)Scenario > 2 && Random_Pick(0, 50) < (int)Scenario && !Trigger && Health_Ratio() < 0x0010 && *this != STRUCT_CONST) {

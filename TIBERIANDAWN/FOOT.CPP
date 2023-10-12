@@ -1209,7 +1209,7 @@ ResultType FootClass::Take_Damage(int & damage, int distance, WarheadType warhea
 					Mission == MISSION_ATTACK ||
 					Mission == MISSION_TIMED_HUNT ||
 					Mission == MISSION_HUNT) && 
-				(What_Am_I() != RTTI_AIRCRAFT || source->What_Am_I() != RTTI_BUILDING)) {
+				(What_Am_I() != RTTI_AIRCRAFT || source->What_Am_I() != RTTI_BUILDING) && (What_Am_I() != RTTI_UNIT || *(UnitType*)this != UNIT_APC)) {
 
 				/*
 				**	Assign the source of the damage as the new target. This occurs for the computer

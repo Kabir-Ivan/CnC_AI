@@ -54,7 +54,7 @@ static UnitTypeClass const UnitVisceroid(
 	TXT_VISCEROID,							// NAME:			Text name of this unit type.
 	"VICE",									// NAME:			Text name of this unit type.
 	ANIM_NAPALM2,							// EXPLOSION:	Type of explosion when destroyed.
-	7,							// Build level.
+	99,							// Build level.
 	STRUCTF_BIO_LAB,				// Building prerequisite.
 		false,			// Can this be a goodie surprise from a crate?
 		true,				// Is a leader type?
@@ -431,7 +431,7 @@ static UnitTypeClass const UnitMHQ(
 	5,											// SIGHTRANGE:	Range of sighting.
 	600,										// COST:			Cost to build (Credits).
 	99,										// SCENARIO:	Starting availability scenario.
-	80,100,									// RISK/RWRD:	Risk/reward rating values.
+	80,300,									// RISK/RWRD:	Risk/reward rating values.
 	HOUSEF_MULTI1|
 	HOUSEF_MULTI2|
 	HOUSEF_MULTI3|
@@ -548,7 +548,7 @@ static UnitTypeClass const UnitSAM(
 	4,											// SIGHTRANGE:	Range of sighting.
 	750,										// COST:			Cost to build (Credits).
 	98,										// SCENARIO:	Starting availability scenario.
-	80,30,									// RISK/RWRD:	Risk/reward rating values.
+	80,60,									// RISK/RWRD:	Risk/reward rating values.
 	HOUSEF_MULTI1|
 	HOUSEF_MULTI2|
 	HOUSEF_MULTI3|
@@ -606,7 +606,7 @@ static UnitTypeClass const UnitArty(
 	4,											// SIGHTRANGE:	Range of sighting.
 	450,										// COST:			Cost to build (Credits).
 	9,											// SCENARIO:	Starting availability scenario.
-	80,50,									// RISK/RWRD:	Risk/reward rating values.
+	80,60,									// RISK/RWRD:	Risk/reward rating values.
 	HOUSEF_MULTI1|
 	HOUSEF_MULTI2|
 	HOUSEF_MULTI3|
@@ -780,7 +780,7 @@ static UnitTypeClass const UnitJeep(
 	2,											// SIGHTRANGE:	Range of sighting.
 	400,										// COST:			Cost to build (Credits).
 	5,											// SCENARIO:	Starting availability scenario.
-	80,41,	 								// RISK/RWRD:	Risk/reward rating values.
+	55,41,	 								// RISK/RWRD:	Risk/reward rating values.
 	HOUSEF_MULTI1|
 	HOUSEF_MULTI2|
 	HOUSEF_MULTI3|
@@ -837,7 +837,7 @@ static UnitTypeClass const UnitBuggy(
 	2,											// SIGHTRANGE:	Range of sighting.
 	300,										// COST:			Cost to build (Credits).
 	5,											// SCENARIO:	Starting availability scenario.
-	80,42, 									// RISK/RWRD:	Risk/reward rating values.
+	50,42, 									// RISK/RWRD:	Risk/reward rating values.
 	HOUSEF_MULTI1|
 	HOUSEF_MULTI2|
 	HOUSEF_MULTI3|
@@ -908,7 +908,7 @@ static UnitTypeClass const UnitBike(
 	HOUSEF_JP|
 	HOUSEF_BAD,								// OWNABLE:		Ownable by house (bit field).
 	WEAPON_DRAGON,WEAPON_NONE,
-	ARMOR_WOOD,								// ARMOR:		Armor type
+	ARMOR_ALUMINUM,								// ARMOR:		Armor type
 	SPEED_WHEEL,							// MOVE:			Locomotion type.
 	MPH_FAST,								// SPEED:		Miles per hour.
 	10,										// ROT:			Rate of turn (degrees per tick).

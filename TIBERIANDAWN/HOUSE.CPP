@@ -965,7 +965,7 @@ void HouseClass::AI(void)
 			CurrentStrategy = strategies[Random_Pick(0, 1)];
 		}
 		if (CurrentStrategy == STRATEGY_NONE) {
-			Strategy strategies[4] = {STRATEGY_AIR, STRATEGY_LIGHT, STRATEGY_HEAVY, STRATEGY_INFANTRY};
+			Strategy strategies[4] = {STRATEGY_LIGHT, STRATEGY_LIGHT, STRATEGY_HEAVY, STRATEGY_INFANTRY};
 			CurrentStrategy = strategies[Random_Pick(0, 3)];
 			if (ActLike == HOUSE_GOOD) {
 				Strategy strategies[2] = { STRATEGY_HEAVY, STRATEGY_INFANTRY };
@@ -2691,6 +2691,19 @@ void HouseClass::Special_Weapon_AI(SpecialWeaponType id)
  	*/
 	BuildingClass * bestptr = NULL;
 	int best = -1;
+	unsigned int amount = 0;
+
+	if (NukeStrike.Is_Ready()) {
+		amount++;
+	}
+
+	if (AirStrike.Is_Ready()) {
+		amount++;
+	}
+
+	if (IonCannon.Is_Ready()) {
+		amount++;
+	}
 
 	for (int index = 0; index < Buildings.Count(); index++) {
 		BuildingClass * b = Buildings.Ptr(index);
@@ -2700,7 +2713,7 @@ void HouseClass::Special_Weapon_AI(SpecialWeaponType id)
 		** being destroyed and not our ally, then we can consider it.
 		*/
 		if (b && !b->IsInLimbo && b->Strength && !Is_Ally(b)) {
-			if (b->Value() > best || best == -1) {
+			if ((b->Value() > best || best == -1) && (*b == STRUCT_OBELISK && (IonCannon.Is_Ready() || b->Health_Ratio() <= 128 * amount) || *b == STRUCT_CONST && b->Health_Ratio() <= 128 * amount || *b == STRUCT_WEAP && b->Health_Ratio() <= 180 * amount) ) {
 				best = b->Value();
 				bestptr = b;
 			}
@@ -5821,7 +5834,7 @@ UrgencyType HouseClass::Check_Attack(void) const
 	for (int index = 0; index < Buildings.Count(); index++) {
 		BuildingClass * u = Buildings.Ptr(index);
 
-		if (u != NULL && !u->IsInLimbo && u->Strength > 0) {
+		if (u != NULL && !u->IsInLimbo && u->Strength > 0 && u->House != this) {
 			if (!Is_Ally(u->House)) {
 				int val = u->Value();
 				if (*u == STRUCT_CONST) {
@@ -5846,19 +5859,44 @@ UrgencyType HouseClass::Check_Attack(void) const
 	}
 	for (int index = 0; index < Units.Count(); index++) {
 		UnitClass * u = Units.Ptr(index);
-		if (u != NULL && !u->IsInLimbo && *u == UNIT_MCV && !(u->House->IsHuman)) {
-			u->Assign_Mission(MISSION_HUNT);
-		}
+		if (u != NULL && !u->IsInLimbo && u->House == this) {
+			if (u != NULL && !u->IsInLimbo && *u == UNIT_MCV && !(u->House->IsHuman)) {
+				u->Assign_Mission(MISSION_HUNT);
+			}
 
-		if (u != NULL && !u->IsInLimbo && u->Strength > 0 && Which_Zone(u) != ZONE_NONE && u->Is_Weapon_Equipped() && !(u->House->IsHuman) && 
-			(u->Mission == MISSION_GUARD_AREA || u->Mission == MISSION_GUARD)) {
-			u->Assign_Mission(MISSION_GUARD_AREA);
-			u->ArchiveTarget = ::As_Target(Find_Cell_Near_Base(u));
-		}
-		if (u != NULL && !u->IsInLimbo && *u == UNIT_APC && !(u->House->IsHuman) && u->How_Many() >= 1 && apcTarget != NULL) {
-			u->Assign_Mission(MISSION_MOVE);
-			u->Assign_Destination(apcTarget->As_Target());
-			
+			if (u != NULL && !u->IsInLimbo && (*u == UNIT_LTANK || *u == UNIT_MTANK || *u == UNIT_HTANK) && u->House == this) {
+				for (int index = 0; index < Units.Count(); index++) {
+					UnitClass * u2 = Units.Ptr(index);
+					if (u2 != NULL && !u2->IsInLimbo && !Is_Ally(u2->House) && u->In_Range(u2) && *u2 != UNIT_HARVESTER &&
+						(!Target_Legal(u->TarCom) || !u->In_Range(u->TarCom) || As_Techno(u->TarCom)->Techno_Type_Class()->Reward * (360 - As_Techno(u->TarCom)->Strength) <
+							u2->Techno_Type_Class()->Reward  * (360 - u2->Strength))) {
+						u->Assign_Target(u2->As_Target());
+					}
+				}
+			}
+
+			if (u != NULL && !u->IsInLimbo && u->Strength > 0 && Which_Zone(u) != ZONE_NONE && u->Is_Weapon_Equipped() && !(u->House->IsHuman) &&
+				(u->Mission == MISSION_GUARD_AREA || u->Mission == MISSION_GUARD) && *u != UNIT_APC) {
+				u->Assign_Mission(MISSION_GUARD_AREA);
+				u->ArchiveTarget = ::As_Target(Find_Cell_Near_Base(u));
+			}
+			if (u != NULL && !u->IsInLimbo && u->Strength > 0 && u->Is_Weapon_Equipped() && !(u->House->IsHuman) && *u != UNIT_APC) {
+				for (int index = 0; index < Buildings.Count(); index++) {
+					BuildingClass * b = Buildings.Ptr(index);
+
+					if (b != NULL && !b->IsInLimbo && b->Strength > 0 && b->Is_Weapon_Equipped()) {
+						if (!Is_Ally(b->House) && (*b == STRUCT_OBELISK) && u->In_Range(b)) {
+							u->Assign_Target(b->As_Target());
+						}
+					}
+
+				}
+			}
+			if (u != NULL && !u->IsInLimbo && *u == UNIT_APC && !(u->House->IsHuman) && u->How_Many() >= 5 && apcTarget != NULL && u->Door_Stage() == 0) {
+				u->Assign_Mission(MISSION_MOVE);
+				u->Assign_Destination(apcTarget->As_Target());
+
+			}
 		}
 	}
 
@@ -5958,7 +5996,7 @@ UrgencyType HouseClass::Check_Attack(void) const
 	for (int index = 0; index < Infantry.Count(); index++) {
 		InfantryClass * i = Infantry.Ptr(index);
 
-		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0) {
+		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && *i != INFANTRY_E3 && Which_Zone(Coord_Cell(i->Coord)) != ZONE_NONE) {
 			infantryCount++;
 		}
 	}
@@ -5966,39 +6004,87 @@ UrgencyType HouseClass::Check_Attack(void) const
 	for (int index = 0; index < Infantry.Count(); index++) {
 		InfantryClass * i = Infantry.Ptr(index);
 
-		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && i->TarCom != NULL && !i->In_Range(i->TarCom) && *i == INFANTRY_E3) {
+		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && i->TarCom != NULL && !i->In_Range(i->TarCom) && *i == INFANTRY_E3 && Which_Zone(As_Techno(i->TarCom)) == ZONE_NONE) {
 			//i->Assign_Target(As_Target(i->Coord));
-			i->Assign_Destination(As_Target(i->Coord));
+			i->Assign_Mission(MISSION_GUARD);
 		}
-		else if(i != NULL && !i->IsInLimbo &&  (i->Mission == MISSION_GUARD || i->Mission == MISSION_GUARD_AREA || i->Mission == MISSION_HUNT) &&
-			*i == INFANTRY_E7 && !i->House->IsHuman && i->House == this && CurInfantry > 8 && l == 0){
+		else if(i != NULL && !i->IsInLimbo &&  (i->Mission == MISSION_GUARD || i->Mission == MISSION_GUARD_AREA || i->Mission == MISSION_HUNT || i->Mission == MISSION_ENTER) &&
+			*i != INFANTRY_E3 && !i->House->IsHuman && i->House == this && infantryCount >= 5){
 			for (int index = 0; index < Units.Count(); index++) {
 				UnitClass * u = Units.Ptr(index);
-				if (u != NULL && !u->IsInLimbo && *u == UNIT_APC && u->House == this && u->How_Many() <= 0 && Distance(u->Coord, i->Coord) < 2500) {
+				if (u != NULL && !u->IsInLimbo && *u == UNIT_APC && u->House == this && (u->Mission == MISSION_GUARD || u->Mission == MISSION_GUARD_AREA) &&
+					u->How_Many() + l <= 4 && Distance(u->Coord, i->Coord) < 3500) {
 					u->Assign_Mission(MISSION_GUARD);
 					i->Assign_Mission(MISSION_ENTER);
 					i->Assign_Destination(u->As_Target());
+					l++;
 				}
-				else if(u != NULL && !u->IsInLimbo && *u == UNIT_APC && u->House == this && u->How_Many() > 0){
+				else if(u != NULL && !u->IsInLimbo && *u == UNIT_APC && u->House == this && u->How_Many() + l > 4){
 					i->Assign_Mission(MISSION_GUARD);
+					l++;
 				}
 			}
 		}
-		if (*i == INFANTRY_E7 && !i->House->IsHuman && i->House == this && CurInfantry > 8) {
-			l = 1;
-		}
 
-	}
-
-	if (infantryCount >= 12) {
 		for (int index = 0; index < Infantry.Count(); index++) {
 			InfantryClass * i = Infantry.Ptr(index);
 
 			if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && *i != INFANTRY_E3) {
+				for (int index2 = 0; index2 < Infantry.Count(); index2++) {
+					InfantryClass * i2 = Infantry.Ptr(index2);
+
+					if (i2 != NULL && !i2->IsInLimbo && i2->House != this && i2->Strength > 0 && i->In_Range(i2->As_Target()) && !Is_Ally(i2)) {
+						i->Assign_Target(i2->As_Target());
+					}
+				}
+			}
+			if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && *i != INFANTRY_E7) {
+				if (Frame % TICKS_PER_MINUTE < TICKS_PER_MINUTE / 10 && i->Mission == MISSION_GUARD_AREA && Which_Zone(i) != ZONE_NONE) {
+					i->ArchiveTarget = ::As_Target(Where_To_Go(i));
+					if (Percent_Chance(20) && *i == INFANTRY_E3) {
+						i->ArchiveTarget = ::As_Target(Find_Cell_Near_Base(i));
+					}
+				}
+			}
+		}
+		/*if (*i == INFANTRY_E7 && !i->House->IsHuman && i->House == this && CurInfantry > 8) {
+			l = 1;
+		}*/
+
+	}
+
+	if (infantryCount >= 15) {
+		for (int index = 5; index < Infantry.Count(); index++) {
+			InfantryClass * i = Infantry.Ptr(index);
+
+			if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && *i != INFANTRY_E3 && i->Mission != MISSION_ENTER) {
 				i->Assign_Mission(MISSION_HUNT);
 			}
 		}
 	}
+
+	if (CurrentStrategy == STRATEGY_INFANTRY) {
+		for (int index = 0; index < Infantry.Count(); index++) {
+			InfantryClass * i = Infantry.Ptr(index);
+
+			if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && (*i == INFANTRY_E4 || *i == INFANTRY_E2) && i->Mission != MISSION_ENTER) {
+				i->Assign_Mission(MISSION_HUNT);
+			}
+
+			/*if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && *i != INFANTRY_E3 && i->Mission != MISSION_ENTER && Which_Zone(i) == ZONE_NONE) {
+				i->Assign_Mission(MISSION_HUNT);
+			}*/
+		}
+	}
+
+	for (int index = 0; index < Infantry.Count(); index++) {
+		InfantryClass * i = Infantry.Ptr(index);
+
+		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && *i != INFANTRY_E3 && i->Mission != MISSION_ENTER && Which_Zone(i) == ZONE_NONE) {
+			i->Assign_Mission(MISSION_HUNT);
+		}
+	}
+
 	CELL crates[101];
 	int numCrates = 0;
 	for (CELL cell = 0; cell < MAP_CELL_TOTAL; cell++) {
@@ -6008,14 +6094,21 @@ UrgencyType HouseClass::Check_Attack(void) const
 		}
 	}
 
+	bool used = false;
+
 	for (int index = 0; index < Units.Count(); index++) {
 		UnitClass * u = Units.Ptr(index);
-		if (u != NULL && !u->IsInLimbo && *u != UNIT_MCV && !(u->House->IsHuman)) {
+		if (u != NULL && !u->IsInLimbo && *u != UNIT_MCV && *u != UNIT_APC && !(u->House->IsHuman) && (u->Mission == MISSION_GUARD || u->Mission == MISSION_GUARD_AREA)) {
 			for (int j = 0; j < numCrates; j++) {
-				if (Distance(Cell_Coord(crates[j]), u->Coord) <= 2500) {
+				if (Distance(Cell_Coord(crates[j]), u->Coord) <= 2500 || (Distance(Cell_Coord(crates[j]), u->Coord) <= 4000 && (*u == UNIT_BUGGY || *u == UNIT_BIKE || *u == UNIT_JEEP))) {
 					u->Assign_Mission(MISSION_MOVE);
 					u->Assign_Destination(As_Target(crates[j]));
+					used = true;
+					break;
 				}
+			}
+			if (used) {
+				break;
 			}
 		}
 	}
@@ -6047,12 +6140,12 @@ UrgencyType HouseClass::Check_Attack(void) const
 
 		if (u != NULL && !u->IsInLimbo && u->Strength > 0 && u->Is_Weapon_Equipped()) {
 			if (!Is_Ally(u->House))  {
-				enemyStrength += (float)u->Risk() * ((float)u->Strength / 256) * 0.2;
+				enemyStrength += (float)u->Risk() * ((float)u->Strength / 256) * 0.5;
 			}
 		}
 
 	}
-	if (Frame > TICKS_PER_MINUTE && Attack == 0 || (enemyStrength + 300 < selfStrength) && ucnt >= 10) {
+	if (Frame > TICKS_PER_MINUTE && Attack == 0 || (enemyStrength + (CurrentStrategy != STRATEGY_LIGHT ? 300 : 0) < selfStrength) && ucnt >= 10) {
 		if (State == STATE_ATTACKED) {
 			return(URGENCY_LOW);
 		}
@@ -6181,9 +6274,12 @@ bool HouseClass::AI_Attack(UrgencyType )
 	for (index = 0; index < Units.Count(); index++) {
 		UnitClass * u = Units.Ptr(index);
 
-		if (u != NULL && !u->IsInLimbo && u->House == this && u->Strength > 0) {
-			if (!shuffle && u->Is_Weapon_Equipped() && (forced || Percent_Chance(75))) {
+		if (u != NULL && !u->IsInLimbo && u->House == this && u->Strength > 0 && *u != UNIT_APC) {
+			if (!shuffle && u->Is_Weapon_Equipped() && (forced || Percent_Chance(95))) {
 				u->Assign_Mission(MISSION_HUNT);
+				if ((*u == UNIT_BIKE || *u == UNIT_BUGGY) && Percent_Chance(100)) {
+					u->Assign_Target(Find_Juicy_Target(u->Coord));
+				}
 			} else {
 
 				/*
@@ -6199,7 +6295,7 @@ bool HouseClass::AI_Attack(UrgencyType )
 	for (index = 0; index < Infantry.Count(); index++) {
 		InfantryClass * i = Infantry.Ptr(index);
 
-		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && (BQuantity[STRUCT_REFINERY] < 4 || max(BQuantity[STRUCT_WEAP], BQuantity[STRUCT_AIRSTRIP]) == 0)) {
+		if (i != NULL && !i->IsInLimbo && i->House == this && i->Strength > 0 && (BQuantity[STRUCT_REFINERY] < 4 || max(BQuantity[STRUCT_WEAP], BQuantity[STRUCT_AIRSTRIP]) == 0) && i->Mission != MISSION_ENTER) {
 			if (!shuffle && (i->Is_Weapon_Equipped() || *i == INFANTRY_RENOVATOR) && (forced || Percent_Chance(75)) && *i != INFANTRY_E3) {
 				i->Assign_Mission(MISSION_HUNT);
 			} else {
@@ -6626,7 +6722,7 @@ int HouseClass::AI_Building(void)
 		**	money available.
 		*/
 		b = &BuildingTypeClass::As_Reference(STRUCT_POWER);
-		if (Can_Build(b, ActLike) && Power <= Drain+Rule.PowerSurplus && b->Cost_Of() < money) {
+		if (Can_Build(b, ActLike) && Power <= Drain+Rule.PowerSurplus && (b->Cost_Of() < money || hasincome)) {
 			choiceptr = BuildChoice.Alloc();
 			if (choiceptr != NULL) {
 				*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_LOW : URGENCY_CRITICAL, b->Type);
@@ -6650,7 +6746,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (money > b->Cost_Of() || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] == 0 ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] <= (CurrentStrategy != STRATEGY_INFANTRY ? 1 : 3) ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
@@ -6666,7 +6762,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(current > 0 ? URGENCY_LOW : URGENCY_CRITICAL, b->Type);
+					*choiceptr = BuildChoiceClass(current > (unsigned)(CurrentStrategy == STRATEGY_INFANTRY ? 1 : 0) ? URGENCY_LOW : URGENCY_CRITICAL, b->Type);
 				}
 			} else {
 				//b = &BuildingTypeClass::As_Reference(STRUCT_TENT);
@@ -6718,7 +6814,8 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(current * 4 > (unsigned)BQuantity[STRUCT_REFINERY] ? URGENCY_LOW : URGENCY_HIGH, b->Type);
+					*choiceptr = BuildChoiceClass(current * 4 > (unsigned)BQuantity[STRUCT_REFINERY] || BQuantity[STRUCT_REFINERY] < 2 ||
+						(CurrentStrategy == STRATEGY_INFANTRY && BQuantity[STRUCT_REFINERY] < 4) ? URGENCY_LOW : URGENCY_HIGH, b->Type);
 				}
 			}
 		}
@@ -6729,7 +6826,8 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(current * 4 > (unsigned)BQuantity[STRUCT_REFINERY] ? URGENCY_LOW : URGENCY_HIGH, b->Type);
+					*choiceptr = BuildChoiceClass(current * 4 > (unsigned)BQuantity[STRUCT_REFINERY] || BQuantity[STRUCT_REFINERY] < 2 ||
+						(CurrentStrategy == STRATEGY_INFANTRY && BQuantity[STRUCT_REFINERY] < 4) ? URGENCY_LOW : URGENCY_HIGH, b->Type);
 				}
 			}
 		}
@@ -6813,7 +6911,7 @@ int HouseClass::AI_Building(void)
 		}
 		}
 		/*
-		** Build some thech
+		** Build some tech
 		*/
 			
 		if (BQuantity[STRUCT_RADAR] == 0) {
@@ -6821,7 +6919,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_REFINERY] >= 4 ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
@@ -6831,7 +6929,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_WEAP] >= 2 && BQuantity[STRUCT_REFINERY] >= 6 ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
@@ -6841,7 +6939,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_LOW, b->Type);
+					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_WEAP] >= 2 && BQuantity[STRUCT_REFINERY] >= 6 ? URGENCY_HIGH : URGENCY_LOW, b->Type);
 				}
 			}
 		}
@@ -6851,7 +6949,7 @@ int HouseClass::AI_Building(void)
 			if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 				choiceptr = BuildChoice.Alloc();
 				if (choiceptr != NULL) {
-					*choiceptr = BuildChoiceClass(URGENCY_MEDIUM, b->Type);
+					*choiceptr = BuildChoiceClass(BQuantity[STRUCT_AIRSTRIP] >= 2 && BQuantity[STRUCT_REFINERY] >= 6 ? URGENCY_HIGH : URGENCY_MEDIUM, b->Type);
 				}
 			}
 		}
@@ -6900,7 +6998,7 @@ int HouseClass::AI_Building(void)
 				if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 					choiceptr = BuildChoice.Alloc();
 					if (choiceptr != NULL) {
-						*choiceptr = BuildChoiceClass(((current < (unsigned)threat_quantity) || current <= 0) ? URGENCY_CRITICAL : URGENCY_MEDIUM, b->Type);
+						*choiceptr = BuildChoiceClass(((current < ((unsigned)threat_quantity + 1) / 2) || current <= 0) ? URGENCY_CRITICAL : URGENCY_MEDIUM, b->Type);
 					}
 				} else {
 #if (1)					
@@ -6908,7 +7006,7 @@ int HouseClass::AI_Building(void)
 					if (Can_Build(b, ActLike) && (b->Cost_Of() < money || hasincome)) {
 						choiceptr = BuildChoice.Alloc();
 						if (choiceptr != NULL) {
-							*choiceptr = BuildChoiceClass(((current < (unsigned)threat_quantity) && (Power > Drain)) ? URGENCY_CRITICAL : URGENCY_LOW, b->Type);
+							*choiceptr = BuildChoiceClass(((current < ((unsigned)threat_quantity + 1) / 2) && (Power > Drain)) ? URGENCY_CRITICAL : URGENCY_LOW, b->Type);
 						}
 					}
 					else {
@@ -7044,7 +7142,20 @@ int HouseClass::AI_Building(void)
 					return(TICKS_PER_SECOND);
 				}
 			}
-			BuildStructure = STRUCT_SANDBAG_WALL;
+			if (Percent_Chance(50)) {
+				BuildStructure = STRUCT_CYCLONE_WALL;
+			}
+			else if (Percent_Chance(50)) {
+				BuildStructure = STRUCT_STORAGE;
+			}
+			else {
+				if (ActLike == HOUSE_GOOD) {
+					BuildStructure = STRUCT_BARRACKS;
+				}
+				else {
+					BuildStructure = STRUCT_HAND;
+				}
+			}
 			//fclose(fp);
 		}
 	}
@@ -7222,10 +7333,10 @@ int HouseClass::AI_Unit(void)
 		{UNIT_JEEP, (CurrentStrategy == STRATEGY_LIGHT) ? 1 : 1},
 		{UNIT_LTANK, (CurrentStrategy == STRATEGY_HEAVY) ? 10 : 1},
 		{UNIT_FTANK, (CurrentStrategy == STRATEGY_HEAVY) ? 5 : 1},
-		{UNIT_MTANK, (CurrentStrategy == STRATEGY_HEAVY) ? 10 : 10},
-		{UNIT_HTANK, (CurrentStrategy == STRATEGY_HEAVY) ? 20 : 20},
+		{UNIT_MTANK, (CurrentStrategy == STRATEGY_HEAVY) ? 20 : 20},
+		{UNIT_HTANK, (CurrentStrategy == STRATEGY_HEAVY) ? 3 : 3},
 		{UNIT_ARTY, (CurrentStrategy == STRATEGY_HEAVY) ? 0 : 0},
-		{UNIT_APC, (CurrentStrategy == STRATEGY_INFANTRY) ? 1 : 1},
+		{UNIT_APC, (CurrentStrategy == STRATEGY_INFANTRY) ? 2 : 1},
 		{UNIT_MSAM, 1},
 		{UNIT_MLRS, 1},
 	};
@@ -7386,9 +7497,19 @@ int HouseClass::AI_Vessel(void)
  *=============================================================================================*/
 int HouseClass::AI_Infantry(void)
 {
+	int numAir = 0;
+	for (int index = 0; index < Aircraft.Count(); index++) {
+		AircraftClass * a = Aircraft.Ptr(index);
+
+		if (a != NULL && !a->IsInLimbo && !Is_Ally(a->House) && a->Strength > 0) {
+			if ((*a == AIRCRAFT_ORCA) || (*a == AIRCRAFT_HELICOPTER)) {
+				numAir++;
+			}
+		}
+	}
 	//assert(Houses.ID(this) == ID);
 	if (CurrentStrategy == STRATEGY_AIR && !ExcessTiberium()) return(TICKS_PER_SECOND);
-	if (CurrentStrategy != STRATEGY_INFANTRY && CurInfantry >= 5 && !ExcessTiberium()) return(TICKS_PER_SECOND);
+	if (CurrentStrategy != STRATEGY_INFANTRY && CurInfantry >= 5 && !ExcessTiberium() && numAir == 0) return(TICKS_PER_SECOND);
 	if (BuildInfantry != INFANTRY_NONE) return(TICKS_PER_SECOND);
 	if (CurInfantry >= Control.MaxInfantry) return(TICKS_PER_SECOND);
 
@@ -7501,16 +7622,6 @@ int HouseClass::AI_Infantry(void)
 		} typetrack[INFANTRY_COUNT];
 		int count = 0;
 		int total = 0;
-		int numAir = 0;
-		for (int index = 0; index < Aircraft.Count(); index++) {
-			AircraftClass * a = Aircraft.Ptr(index);
-
-			if (a != NULL && !a->IsInLimbo && !Is_Ally(a->House) && a->Strength > 0) {
-				if ((*a == AIRCRAFT_ORCA) || (*a == AIRCRAFT_HELICOPTER)) {
-					numAir++;
-				}
-			}
-		}
 		for (InfantryType index = INFANTRY_FIRST; index < INFANTRY_COUNT; index++) {
 			//if (Can_Build(&InfantryTypeClass::As_Reference(index), ActLike) && InfantryTypeClass::As_Reference(index).Level <= (unsigned)Control.TechLevel) {
 			if (Can_Build(&InfantryTypeClass::As_Reference(index), ActLike) && InfantryTypeClass::As_Reference(index).Level <= (unsigned)BuildLevel) {
@@ -7525,15 +7636,15 @@ int HouseClass::AI_Infantry(void)
 
 					switch (index) {
 						case INFANTRY_E1:
-							typetrack[count].Value = 4;
+							typetrack[count].Value = 2;
 							break;
 
 						case INFANTRY_E2:
-							typetrack[count].Value = 3;
+							typetrack[count].Value = 4;
 							break;
 
 						case INFANTRY_E3:
-							typetrack[count].Value = 1 + numAir * 2;
+							typetrack[count].Value = numAir * 2;
 							break;
 
 						case INFANTRY_E4:
@@ -8309,7 +8420,7 @@ TARGET HouseClass::Find_Juicy_Target(COORDINATE coord) const
 
 			if (unit->Anti_Air()) val *= 2;
 
-			if (*unit == UNIT_HARVESTER) val /= 2;
+			if (*unit == UNIT_HARVESTER) val /= 6;
 
 			if (value == 0 || val < value) {
 				value = val;
@@ -9114,9 +9225,10 @@ CELL HouseClass::Find_Cell_Near_Base(TechnoClass const * techno) const
 	**	Find a legal placement position as close as possible to the picked location while still
 	**	remaining within the zone.
 	*/
-	for (CELL cell = 0; cell < MAP_CELL_TOTAL; cell++) {
+	/*for (CELL cell = 0; cell < MAP_CELL_TOTAL; cell++) {
 		//		if (Map.In_Radar(cell)) {
-		if (Map.In_Radar(cell) && Which_Zone(cell) == ZONE_NONE && Distance(Center, Cell_Coord(cell)) > Radius * 6 && Map[cell].Is_Clear_To_Move(false, false)) {
+		if (Map.In_Radar(cell) && Which_Zone(cell) == ZONE_NONE && Distance(Center, Cell_Coord(cell)) > Radius * 6 && Map[cell].Is_Clear_To_Move(false, false) && 
+			(Map[cell].Land_Type() == LAND_CLEAR || Map[cell].Land_Type() == LAND_ROAD)) {
 			bool ok = true;
 			if (ok) {
 				int dist = Distance(Cell_Coord(cell), techno->Coord);
@@ -9124,6 +9236,27 @@ CELL HouseClass::Find_Cell_Near_Base(TechnoClass const * techno) const
 					HouseClass * enemy = Houses.Ptr(i);
 					if (this != enemy) {
 						dist += Distance(Cell_Coord(cell), enemy->Center) / ((Houses.Count() - 1) * 2);
+					}
+				}
+				if (bestval == -1 || dist < bestval) {
+					bestval = dist;
+					bestcell = cell;
+				}
+			}
+		}
+	}*/
+
+	for (CELL cell = 0; cell < MAP_CELL_TOTAL; cell++) {
+		if (Map.In_Radar(cell) && Which_Zone(cell) == ZONE_NONE && Distance(Center, Cell_Coord(cell)) <= Radius * 5 && Map[cell].Is_Clear_To_Move(false, false) &&
+			(Map[cell].Land_Type() == LAND_CLEAR || Map[cell].Land_Type() == LAND_ROAD)) {
+			bool ok = true;
+			if (ok) {
+				int dist = Distance(Cell_Coord(cell), techno->Coord);
+				for (int index = 0; index < Units.Count(); index++) {
+					UnitClass * unit = Units.Ptr(index);
+
+					if (!Is_Ally(unit) && unit->IsDown && !unit->IsInLimbo) {
+						dist += Distance(unit->Coord, Cell_Coord(cell));
 					}
 				}
 				if (bestval == -1 || dist < bestval) {

@@ -7404,7 +7404,7 @@ void DLLExportClass::Computer_Message(bool last_player_taunt)
 			taunt_index = IRandom(0,12);
 		}
 
-		On_Message(ai_players[ai_player_index], "", 15.0f, MESSAGE_TYPE_COMPUTER_TAUNT, taunt_index);
+		//On_Message(ai_players[ai_player_index], "", 15.0f, MESSAGE_TYPE_COMPUTER_TAUNT, taunt_index);
 	}
 }
 

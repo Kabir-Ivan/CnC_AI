@@ -481,7 +481,7 @@ static BuildingTypeClass const ClassObelisk(
 	5,											// SIGHTRANGE:	Range of sighting.
 	1500,										// COST:			Cost to purchase.
 	11,										// SCENARIO:	Starting availability scenario.
-	600,100,									// RISK/RWRD:	Risk/reward rating values.
+	600,150,									// RISK/RWRD:	Risk/reward rating values.
 	HOUSEF_MULTI1|
 	HOUSEF_MULTI2|
 	HOUSEF_MULTI3|
@@ -544,7 +544,7 @@ static BuildingTypeClass const ClassTurret(
 #endif
 #endif
 	8,											// SCENARIO:	Starting availability scenario.
-	300,26,									// RISK/RWRD:	Risk/reward rating values.
+	200,26,									// RISK/RWRD:	Risk/reward rating values.
 	HOUSEF_MULTI1|
 	HOUSEF_MULTI2|
 	HOUSEF_MULTI3|

@@ -3236,7 +3236,15 @@ MoveType UnitClass::Can_Enter_Cell(CELL cell, FacingType ) const
 					}
 					if (retval < MOVE_MOVING_BLOCK) retval = MOVE_MOVING_BLOCK;
 				} else {
-					if (obj->What_Am_I() == RTTI_BUILDING) return(MOVE_NO);
+					if (obj->What_Am_I() == RTTI_BUILDING && 
+						(*(BuildingClass const *)obj == STRUCT_CONST ||
+						*(BuildingClass const *)obj == STRUCT_WEAP ||
+						*(BuildingClass const *)obj == STRUCT_AIRSTRIP ||
+						*(BuildingClass const *)obj == STRUCT_REFINERY ||
+						*(BuildingClass const *)obj == STRUCT_POWER && this->House->Power - 100 < this->House->Drain ||
+						*(BuildingClass const *)obj == STRUCT_EYE ||
+						*(BuildingClass const *)obj == STRUCT_TEMPLE) || obj->Owner() != this->Owner() || this->House->IsHuman) return(MOVE_NO);
+					if (obj->What_Am_I() == RTTI_BUILDING) return(MOVE_DESTROYABLE);
 					if (retval < MOVE_TEMP) retval = MOVE_TEMP;
 				}
 			} else {
